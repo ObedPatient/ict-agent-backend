@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}{{ analysis.pair }} {{ analysis.get_timeframe_display }} — ICT Analysis{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Back + header -->
+  <div class="flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      New Analysis
+    </a>
+    <div class="flex items-center gap-2 font-mono text-xs text-gray-600">
+      <div class="w-1.5 h-1.5 rounded-full bg-bull"></div>
+      {{ analysis.created_at|date:"M d, Y H:i" }} UTC
+    </div>
+  </div>
+
+  <!-- Signal Banner -->
+  {% if analysis.signal == 'TRADE' %}
+  <div class="rounded-xl p-5 relative overflow-hidden" style="background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25);">
+    <div class="absolute top-0 left-0 w-1 h-full rounded-l-xl" style="background:#00d4aa;"></div>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3 ml-2">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:rgba(0,212,170,0.15);">
+          <svg class="w-5 h-5 text-bull" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-lg font-bold text-bull">TRADE SETUP</span>
+            {% if analysis.bias == 'BULLISH' %}
+            <span class="text-xs px-2 py-0.5 rounded-full font-mono" style="background:rgba(0,212,170,0.1);color:#00d4aa;border:1px solid rgba(0,212,170,0.3);">▲ BULLISH</span>
+            {% else %}
+            <span class="text-xs px-2 py-0.5 rounded-full font-mono" style="background:rgba(255,71,87,0.1);color:#ff4757;border:1px solid rgba(255,71,87,0.3);">▼ BEARISH</span>
+            {% endif %}
+          </div>
+          <p class="text-sm text-gray-400 mt-0.5">{{ analysis.pair }} — {{ analysis.get_timeframe_display }} — {{ analysis.get_session_display }}</p>
+        </div>
+      </div>
+      {% if analysis.rr_ratio %}
+      <div class="text-right">
+        <p class="text-xs text-gray-500 font-mono">RISK:REWARD</p>
+        <p class="font-mono text-2xl font-bold text-bull">{{ analysis.rr_ratio }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% elif analysis.signal == 'WAIT' %}
+  <div class="rounded-xl p-5 relative overflow-hidden" style="background:rgba(255,165,2,0.07);border:1px solid rgba(255,165,2,0.25);">
+    <div class="absolute top-0 left-0 w-1 h-full rounded-l-xl" style="background:#ffa502;"></div>
+    <div class="flex items-center gap-3 ml-2">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:rgba(255,165,2,0.15);">
+        <svg class="w-5 h-5 text-wait" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <span class="font-mono text-lg font-bold text-wait">WAIT & WATCH</span>
+        <p class="text-sm text-gray-400 mt-0.5">{{ analysis.pair }} — {{ analysis.get_timeframe_display }} — Setup not yet ready</p>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="rounded-xl p-5 relative overflow-hidden" style="background:rgba(255,71,87,0.07);border:1px solid rgba(255,71,87,0.25);">
+    <div class="absolute top-0 left-0 w-1 h-full rounded-l-xl" style="background:#ff4757;"></div>
+    <div class="flex items-center gap-3 ml-2">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:rgba(255,71,87,0.15);">
+        <svg class="w-5 h-5 text-bear" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+      </div>
+      <div>
+        <span class="font-mono text-lg font-bold text-bear">NO TRADE</span>
+        <p class="text-sm text-gray-400 mt-0.5">{{ analysis.pair }} — {{ analysis.get_timeframe_display }} — No valid setup today</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Main grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- Chart image -->
+    <div class="lg:col-span-2 rounded-xl border border-terminal-border overflow-hidden" style="background:#111318;">
+      <div class="px-4 py-3 border-b border-terminal-border flex items-center justify-between">
+        <span class="font-mono text-xs text-gray-500 uppercase tracking-wider">Chart</span>
+        <div class="flex items-center gap-3 font-mono text-xs">
+          <span class="text-gray-500">{{ analysis.pair }}</span>
+          <span class="text-gray-600">/</span>
+          <span class="text-gray-500">{{ analysis.get_timeframe_display }}</span>
+        </div>
+      </div>
+      <div class="p-3">
+        <img src="{{ analysis.chart_image.url }}" class="w-full rounded-lg" alt="Chart" style="max-height:420px;object-fit:contain;background:#0a0c0f;"/>
+      </div>
+    </div>
+
+    <!-- Trade levels (only if TRADE) -->
+    {% if analysis.signal == 'TRADE' %}
+    <div class="space-y-3">
+      {% if analysis.entry_price %}
+      <div class="rounded-xl border p-4" style="background:rgba(88,166,255,0.05);border-color:rgba(88,166,255,0.2);">
+        <p class="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">Entry Zone</p>
+        <p class="font-mono text-xl font-bold text-accent">{{ analysis.entry_price }}</p>
+      </div>
+      {% endif %}
+      {% if analysis.stoploss %}
+      <div class="rounded-xl border p-4" style="background:rgba(255,71,87,0.05);border-color:rgba(255,71,87,0.2);">
+        <p class="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">Stop Loss</p>
+        <p class="font-mono text-xl font-bold text-bear">{{ analysis.stoploss }}</p>
+      </div>
+      {% endif %}
+      {% if analysis.tp1 %}
+      <div class="rounded-xl border p-4" style="background:rgba(0,212,170,0.05);border-color:rgba(0,212,170,0.2);">
+        <p class="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">Target 1</p>
+        <p class="font-mono text-xl font-bold text-bull">{{ analysis.tp1 }}</p>
+      </div>
+      {% endif %}
+      {% if analysis.tp2 %}
+      <div class="rounded-xl border p-4" style="background:rgba(0,212,170,0.05);border-color:rgba(0,212,170,0.15);">
+        <p class="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">Target 2</p>
+        <p class="font-mono text-xl font-bold" style="color:rgba(0,212,170,0.7);">{{ analysis.tp2 }}</p>
+      </div>
+      {% endif %}
+      {% if analysis.rr_ratio %}
+      <div class="rounded-xl border border-terminal-border p-4" style="background:#111318;">
+        <p class="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">R:R Ratio</p>
+        <p class="font-mono text-xl font-bold text-white">{{ analysis.rr_ratio }}</p>
+        <p class="text-xs text-gray-600 mt-1">at {{ analysis.risk_percent }}% risk</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% elif analysis.signal == 'WAIT' %}
+    <!-- Wait conditions -->
+    <div class="rounded-xl border p-5" style="background:rgba(255,165,2,0.04);border-color:rgba(255,165,2,0.2);">
+      <p class="font-mono text-xs text-wait uppercase tracking-wider mb-3">Wait For These Conditions</p>
+      <p class="text-sm text-gray-300 leading-relaxed">{{ analysis.wait_condition }}</p>
+    </div>
+
+    {% else %}
+    <!-- No trade reasons -->
+    <div class="rounded-xl border p-5" style="background:rgba(255,71,87,0.04);border-color:rgba(255,71,87,0.2);">
+      <p class="font-mono text-xs text-bear uppercase tracking-wider mb-3">Why No Trade Today</p>
+      <p class="text-sm text-gray-300 leading-relaxed">{{ analysis.no_trade_reason }}</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Analysis details row -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <!-- Market Structure -->
+    {% if analysis.market_structure %}
+    <div class="rounded-xl border border-terminal-border p-5" style="background:#111318;">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-1.5 h-1.5 rounded-full bg-accent"></div>
+        <p class="font-mono text-xs text-gray-500 uppercase tracking-wider">Market Structure</p>
+      </div>
+      <p class="text-sm text-gray-300 leading-relaxed">{{ analysis.market_structure }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Key Levels -->
+    {% if analysis.key_levels %}
+    <div class="rounded-xl border border-terminal-border p-5" style="background:#111318;">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-1.5 h-1.5 rounded-full text-wait" style="background:#ffa502;"></div>
+        <p class="font-mono text-xs text-gray-500 uppercase tracking-wider">Key Levels & POIs</p>
+      </div>
+      <p class="text-sm text-gray-300 leading-relaxed font-mono text-xs">{{ analysis.key_levels }}</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Full Analysis Narrative -->
+  {% if analysis.full_analysis %}
+  <div class="rounded-xl border border-terminal-border p-6" style="background:#111318;">
+    <div class="flex items-center gap-2 mb-4">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <p class="font-mono text-xs text-gray-500 uppercase tracking-wider">Full ICT Analysis</p>
+    </div>
+    <div class="text-sm text-gray-300 leading-7 space-y-3">
+      {% for paragraph in analysis.full_analysis|linebreaksbr|safe %}
+      {{ paragraph }}
+      {% endfor %}
+      <p>{{ analysis.full_analysis|linebreaksbr }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Disclaimer + actions -->
+  <div class="flex items-center justify-between pt-2 border-t border-terminal-border">
+    <p class="text-xs text-gray-700">This is AI analysis for educational purposes only — not financial advice. Always do your own research.</p>
+    <div class="flex items-center gap-2">
+      <a href="/" class="px-4 py-2 text-sm rounded-lg border border-terminal-border text-gray-400 hover:text-white hover:border-gray-600 transition-colors font-mono">
+        + New Analysis
+      </a>
+      <form method="post" action="/delete/{{ analysis.pk }}/" onsubmit="return confirm('Delete this analysis?')">
+        {% csrf_token %}
+        <button type="submit" class="px-4 py-2 text-sm rounded-lg text-gray-600 hover:text-bear transition-colors font-mono">
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}ICT Smart Money Analyst{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['Space Mono', 'monospace'],
+            sans: ['DM Sans', 'sans-serif'],
+          },
+          colors: {
+            terminal: {
+              bg: '#0a0c0f',
+              surface: '#111318',
+              card: '#161b22',
+              border: '#21262d',
+              muted: '#1c2128',
+            },
+            bull: '#00d4aa',
+            bear: '#ff4757',
+            wait: '#ffa502',
+            accent: '#58a6ff',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'scan': 'scan 2s linear infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0a0c0f; font-family: 'DM Sans', sans-serif; }
+    .font-mono { font-family: 'Space Mono', monospace; }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #111318; }
+    ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 2px; }
+
+    /* Grid lines background effect */
+    .grid-bg {
+      background-image: 
+        linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Signal badges */
+    .signal-trade { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.3); color: #00d4aa; }
+    .signal-wait  { background: rgba(255,165,2,0.1);  border: 1px solid rgba(255,165,2,0.3);  color: #ffa502; }
+    .signal-no    { background: rgba(255,71,87,0.1);  border: 1px solid rgba(255,71,87,0.3);  color: #ff4757; }
+
+    /* Bias badges */
+    .bias-bull { color: #00d4aa; }
+    .bias-bear { color: #ff4757; }
+    .bias-neutral { color: #8b949e; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #21262d;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #58a6ff;
+      background: rgba(88,166,255,0.04);
+    }
+
+    /* Loading animation */
+    @keyframes scan {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(400%); }
+    }
+    .scan-line {
+      animation: scan 2s linear infinite;
+      background: linear-gradient(transparent, rgba(88,166,255,0.15), transparent);
+      height: 25%;
+    }
+
+    /* Ticker tape */
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ticker-inner { animation: ticker 30s linear infinite; }
+
+    /* Card hover */
+    .analysis-card { transition: border-color 0.2s, transform 0.2s; }
+    .analysis-card:hover { border-color: #30363d; transform: translateY(-1px); }
+  </style>
+</head>
+<body class="min-h-screen text-gray-100">
+
+  <!-- Top ticker bar -->
+  <div class="border-b border-terminal-border overflow-hidden" style="background:#0d1117;">
+    <div class="flex items-center py-1.5 overflow-hidden">
+      <span class="font-mono text-xs text-gray-500 px-4 shrink-0 border-r border-terminal-border mr-4">LIVE</span>
+      <div class="ticker-inner flex gap-8 whitespace-nowrap font-mono text-xs">
+        <span class="text-gray-400">EUR/USD <span class="text-bull">+0.12%</span></span>
+        <span class="text-gray-400">GBP/USD <span class="text-bear">-0.08%</span></span>
+        <span class="text-gray-400">XAU/USD <span class="text-bull">+0.45%</span></span>
+        <span class="text-gray-400">BTC/USD <span class="text-bull">+1.23%</span></span>
+        <span class="text-gray-400">GBP/JPY <span class="text-bear">-0.19%</span></span>
+        <span class="text-gray-400">NAS100 <span class="text-bull">+0.67%</span></span>
+        <span class="text-gray-400">EUR/USD <span class="text-bull">+0.12%</span></span>
+        <span class="text-gray-400">GBP/USD <span class="text-bear">-0.08%</span></span>
+        <span class="text-gray-400">XAU/USD <span class="text-bull">+0.45%</span></span>
+        <span class="text-gray-400">BTC/USD <span class="text-bull">+1.23%</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="border-b border-terminal-border sticky top-0 z-50" style="background:rgba(10,12,15,0.95);backdrop-filter:blur(10px);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded flex items-center justify-center" style="background:rgba(88,166,255,0.15);border:1px solid rgba(88,166,255,0.3);">
+          <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <span class="font-mono text-sm font-bold text-white tracking-wider">ICT<span class="text-accent">AGENT</span></span>
+      </a>
+      <div class="flex items-center gap-1">
+        <a href="/" class="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-white hover:bg-terminal-card transition-colors {% if request.resolver_match.url_name == 'index' %}text-white bg-terminal-card{% endif %}">
+          Analyze
+        </a>
+        <a href="/history/" class="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-white hover:bg-terminal-card transition-colors {% if request.resolver_match.url_name == 'history' %}text-white bg-terminal-card{% endif %}">
+          History
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-terminal-border mt-16 py-6">
+    <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <span class="font-mono text-xs text-gray-600">ICT AGENT v1.0 — Smart Money Analysis</span>
+      <span class="text-xs text-gray-700">For educational purposes only. Not financial advice.</span>
+    </div>
+  </footer>
+
+</body>
+</html>

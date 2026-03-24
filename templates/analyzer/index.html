@@ -1,0 +1,534 @@
+{% extends 'base.html' %} {% block title %}ICT Agent — Chart Analysis{% endblock %} 
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  <!-- LEFT: Upload Form -->
+  <div class="lg:col-span-2 space-y-4">
+    <!-- Header -->
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="w-1.5 h-1.5 rounded-full bg-bull animate-pulse"></div>
+        <span class="font-mono text-xs text-gray-500 uppercase tracking-widest"
+          >Smart Money Analyst</span
+        >
+      </div>
+      <h1 class="text-2xl font-semibold text-white">Chart Analysis</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        Upload a chart — pair, timeframe & session auto-detected
+      </p>
+    </div>
+
+    <!-- Live Session Card -->
+    <div
+      class="rounded-xl p-4 border {% if session.is_killzone %}border-bull{% elif session.avoid_trading %}border-bear{% else %}border-terminal-border{% endif %}"
+      style="background: #111318"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <div
+              class="w-1.5 h-1.5 rounded-full animate-pulse {% if session.is_killzone %}bg-bull{% elif session.avoid_trading %}bg-bear{% else %}bg-wait{% endif %}"
+            ></div>
+            <span
+              class="font-mono text-xs text-gray-500 uppercase tracking-wider"
+              >Live Session</span
+            >
+          </div>
+          <p
+            class="font-mono text-sm font-bold {% if session.is_killzone %}text-bull {% elif session.avoid_trading %}text-bear {% else %}text-wait{% endif %}"
+          >
+            {{ session.session_name }}
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            {{ session.session_description }}
+          </p>
+        </div>
+        <div class="text-right shrink-0">
+          <p class="font-mono text-xs text-gray-600">NY TIME</p>
+          <p class="font-mono text-sm text-white">{{ session.ny_time_str }}</p>
+          {% if session.is_killzone %}
+          <span
+            class="text-xs font-mono px-2 py-0.5 rounded-full signal-trade mt-1 inline-block"
+            >KILLZONE</span
+          >
+          {% elif session.avoid_trading %}
+          <span
+            class="text-xs font-mono px-2 py-0.5 rounded-full signal-no mt-1 inline-block"
+            >AVOID</span
+          >
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <form
+      id="analysisForm"
+      method="post"
+      action="/analyze/"
+      enctype="multipart/form-data"
+      class="space-y-4"
+    >
+      {% csrf_token %}
+
+      <!-- Image upload -->
+      <div
+        class="rounded-xl border border-terminal-border p-4"
+        style="background: #111318"
+      >
+        <label
+          class="block text-xs font-mono text-gray-500 uppercase tracking-wider mb-3"
+        >
+          Chart Image
+          <span class="text-gray-700 ml-2 normal-case"
+            >— pair & timeframe auto-detected</span
+          >
+        </label>
+        <div
+          id="uploadZone"
+          class="upload-zone rounded-lg p-6 text-center cursor-pointer relative overflow-hidden"
+          onclick="document.getElementById('id_chart_image').click()"
+        >
+          <div id="uploadPlaceholder">
+            <svg
+              class="w-8 h-8 text-gray-600 mx-auto mb-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            <p class="text-sm text-gray-500">
+              Drop chart here or <span class="text-accent">browse</span>
+            </p>
+            <p class="text-xs text-gray-600 mt-1">PNG · JPG · WEBP</p>
+          </div>
+          <img
+            id="previewImg"
+            class="hidden max-h-48 mx-auto rounded"
+            alt="preview"
+          />
+          <input
+            type="file"
+            id="id_chart_image"
+            name="chart_image"
+            accept="image/*"
+            class="hidden"
+            required
+          />
+        </div>
+        <p id="fileName" class="text-xs text-gray-600 mt-2 font-mono"></p>
+        <!-- Auto-detect badges shown after upload -->
+        <div id="autoDetectBadges" class="hidden flex gap-2 mt-3">
+          <span
+            class="text-xs px-2 py-1 rounded-md font-mono"
+            style="
+              background: rgba(88, 166, 255, 0.1);
+              color: #58a6ff;
+              border: 1px solid rgba(88, 166, 255, 0.2);
+            "
+          >
+            ⟳ Pair: auto-detect
+          </span>
+          <span
+            class="text-xs px-2 py-1 rounded-md font-mono"
+            style="
+              background: rgba(88, 166, 255, 0.1);
+              color: #58a6ff;
+              border: 1px solid rgba(88, 166, 255, 0.2);
+            "
+          >
+            ⟳ Timeframe: auto-detect
+          </span>
+          <span
+            class="text-xs px-2 py-1 rounded-md font-mono"
+            style="
+              background: rgba(0, 212, 170, 0.1);
+              color: #00d4aa;
+              border: 1px solid rgba(0, 212, 170, 0.2);
+            "
+          >
+            ✓ Session: {{ session.ny_time_str }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Risk -->
+      <div
+        class="rounded-xl border border-terminal-border p-4"
+        style="background: #111318"
+      >
+        <label
+          class="block text-xs font-mono text-gray-500 uppercase tracking-wider mb-2"
+          >Risk per Trade (%)</label
+        >
+        <div class="flex items-center gap-3">
+          <input
+            type="number"
+            name="risk_percent"
+            value="1.0"
+            min="0.5"
+            max="5"
+            step="0.5"
+            id="riskInput"
+            class="w-28 bg-terminal-bg border border-terminal-border rounded-lg px-3 py-2 text-sm text-white focus:border-accent focus:outline-none font-mono"
+          />
+          <div class="flex gap-1">
+            <button
+              type="button"
+              onclick="setRisk('0.5')"
+              class="px-2 py-1 text-xs font-mono rounded border border-terminal-border text-gray-500 hover:text-white hover:border-gray-500 transition-colors risk-btn"
+            >
+              0.5%
+            </button>
+            <button
+              type="button"
+              onclick="setRisk('1.0')"
+              class="px-2 py-1 text-xs font-mono rounded border border-terminal-border text-gray-500 hover:text-white hover:border-gray-500 transition-colors risk-btn"
+            >
+              1.0%
+            </button>
+            <button
+              type="button"
+              onclick="setRisk('1.5')"
+              class="px-2 py-1 text-xs font-mono rounded border border-terminal-border text-gray-500 hover:text-white hover:border-gray-500 transition-colors risk-btn"
+            >
+              1.5%
+            </button>
+            <button
+              type="button"
+              onclick="setRisk('2.0')"
+              class="px-2 py-1 text-xs font-mono rounded border border-terminal-border text-gray-500 hover:text-white hover:border-gray-500 transition-colors risk-btn"
+            >
+              2.0%
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div
+        class="rounded-xl border border-terminal-border p-4"
+        style="background: #111318"
+      >
+        <label
+          class="block text-xs font-mono text-gray-500 uppercase tracking-wider mb-2"
+        >
+          Trader Notes <span class="text-gray-700">(optional)</span>
+        </label>
+        <textarea
+          name="notes"
+          rows="2"
+          placeholder="E.g. high impact news at 2:30 PM, waiting for NY open, saw liquidity grab on 5M..."
+          class="w-full bg-terminal-bg border border-terminal-border rounded-lg px-3 py-2 text-sm text-gray-300 focus:border-accent focus:outline-none resize-none placeholder-gray-700"
+        ></textarea>
+      </div>
+
+      <!-- Submit -->
+      <button
+        type="submit"
+        id="submitBtn"
+        class="w-full py-3 rounded-xl font-mono text-sm font-bold tracking-wider transition-all"
+        style="
+          background: rgba(88, 166, 255, 0.15);
+          border: 1px solid rgba(88, 166, 255, 0.4);
+          color: #58a6ff;
+        "
+      >
+        <span id="btnText">▶ ANALYZE CHART</span>
+        <span id="btnLoader" class="hidden">
+          <span
+            class="inline-block w-3 h-3 border border-accent border-t-transparent rounded-full animate-spin mr-2"
+          ></span>
+          ANALYZING...
+        </span>
+      </button>
+    </form>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="lg:col-span-3 space-y-6">
+    <!-- How it works -->
+    <div
+      class="rounded-xl border border-terminal-border p-5"
+      style="background: #111318"
+    >
+      <h2
+        class="font-mono text-xs text-gray-500 uppercase tracking-widest mb-4"
+      >
+        How The Agent Thinks
+      </h2>
+      <div class="space-y-3">
+        {% for step in steps %}
+        <div class="flex items-start gap-3">
+          <div
+            class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-mono text-xs font-bold mt-0.5"
+            style="
+              background: rgba(88, 166, 255, 0.1);
+              color: #58a6ff;
+              border: 1px solid rgba(88, 166, 255, 0.2);
+            "
+          >
+            {{ forloop.counter }}
+          </div>
+          <div>
+            <p class="text-sm font-medium text-white">{{ step.title }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ step.desc }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ICT Concepts -->
+    <div
+      class="rounded-xl border border-terminal-border p-5"
+      style="background: #111318"
+    >
+      <h2
+        class="font-mono text-xs text-gray-500 uppercase tracking-widest mb-4"
+      >
+        ICT Concepts Analyzed
+      </h2>
+      <div class="grid grid-cols-2 gap-2">
+        {% for concept in concepts %}
+        <div
+          class="flex items-center gap-2 px-3 py-2 rounded-lg"
+          style="
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #21262d;
+          "
+        >
+          <div
+            class="w-1.5 h-1.5 rounded-full"
+            style="background:{{ concept.color }};"
+          ></div>
+          <span class="text-xs text-gray-400">{{ concept.name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recent Analyses -->
+    {% if analyses %}
+    <div>
+      <h2
+        class="font-mono text-xs text-gray-500 uppercase tracking-widest mb-3"
+      >
+        Recent Analyses
+      </h2>
+      <div class="space-y-2">
+        {% for a in analyses %}
+        <a
+          href="/analysis/{{ a.pk }}/"
+          class="analysis-card flex items-center gap-3 px-4 py-3 rounded-xl border border-terminal-border block"
+          style="background: #111318"
+        >
+          <div
+            class="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-terminal-border"
+          >
+            <img
+              src="{{ a.chart_image.url }}"
+              class="w-full h-full object-cover"
+              alt="chart"
+            />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-sm font-bold text-white"
+                >{{ a.pair|default:"Unknown" }}</span
+              >
+              <span class="text-xs text-gray-600"
+                >{{ a.timeframe|default:"" }}</span
+              >
+            </div>
+            <span class="text-xs text-gray-600"
+              >{{ a.created_at|timesince }} ago · {{ a.session|default:""
+              }}</span
+            >
+          </div>
+          {% if a.signal %}
+          <span
+            class="text-xs font-mono px-2 py-1 rounded-md {% if a.signal == 'TRADE' %}signal-trade{% elif a.signal == 'WAIT' %}signal-wait{% else %}signal-no{% endif %}"
+          >
+            {{ a.signal }}
+          </span>
+          {% endif %} {% if a.bias %}
+          <span
+            class="font-mono text-xs {% if a.bias == 'BULLISH' %}bias-bull{% elif a.bias == 'BEARISH' %}bias-bear{% else %}bias-neutral{% endif %}"
+          >
+            {% if a.bias == 'BULLISH' %}▲{% elif a.bias == 'BEARISH' %}▼{% else
+            %}◆{% endif %} {{ a.bias }}
+          </span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div
+  id="loadingOverlay"
+  class="fixed inset-0 z-50 hidden flex-col items-center justify-center"
+  style="background: rgba(10, 12, 15, 0.95)"
+>
+  <div class="text-center space-y-6">
+    <div class="relative w-32 h-32 mx-auto">
+      <div
+        class="w-32 h-32 border border-terminal-border rounded-xl overflow-hidden relative"
+        style="background: #111318"
+      >
+        <div class="absolute inset-0 scan-line"></div>
+        <div class="absolute inset-0 grid-bg opacity-30"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <svg
+            class="w-8 h-8 text-accent opacity-40"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="font-mono text-sm text-accent" id="loadingText">
+        Reading chart symbol & timeframe...
+      </p>
+      <p class="text-xs text-gray-600 mt-1">ICT analysis in progress</p>
+    </div>
+    <div class="flex gap-1 justify-center">
+      <div
+        class="w-1 h-1 rounded-full bg-accent animate-bounce"
+        style="animation-delay: 0ms"
+      ></div>
+      <div
+        class="w-1 h-1 rounded-full bg-accent animate-bounce"
+        style="animation-delay: 150ms"
+      ></div>
+      <div
+        class="w-1 h-1 rounded-full bg-accent animate-bounce"
+        style="animation-delay: 300ms"
+      ></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById("id_chart_image");
+  const uploadZone = document.getElementById("uploadZone");
+  const previewImg = document.getElementById("previewImg");
+  const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+  const fileName = document.getElementById("fileName");
+  const autoDetectBadges = document.getElementById("autoDetectBadges");
+
+  fileInput.addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    fileName.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      previewImg.src = ev.target.result;
+      previewImg.classList.remove("hidden");
+      uploadPlaceholder.classList.add("hidden");
+      autoDetectBadges.classList.remove("hidden");
+      autoDetectBadges.classList.add("flex");
+    };
+    reader.readAsDataURL(file);
+  });
+
+  uploadZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    uploadZone.classList.add("drag-over");
+  });
+  uploadZone.addEventListener("dragleave", () =>
+    uploadZone.classList.remove("drag-over"),
+  );
+  uploadZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove("drag-over");
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event("change"));
+    }
+  });
+
+  function setRisk(v) {
+    document.getElementById("riskInput").value = v;
+  }
+
+  const loadingMessages = [
+    "Reading chart symbol & timeframe...",
+    "Detecting NY session & killzone...",
+    "Scanning market structure...",
+    "Identifying liquidity pools...",
+    "Locating order blocks & FVGs...",
+    "Checking ICT confluences...",
+    "Calculating entry, SL & targets...",
+    "Generating recommendation...",
+  ];
+
+  document
+    .getElementById("analysisForm")
+    .addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const overlay = document.getElementById("loadingOverlay");
+      const loadingText = document.getElementById("loadingText");
+      const submitBtn = document.getElementById("submitBtn");
+      const btnText = document.getElementById("btnText");
+      const btnLoader = document.getElementById("btnLoader");
+
+      overlay.classList.remove("hidden");
+      overlay.classList.add("flex");
+      submitBtn.disabled = true;
+      btnText.classList.add("hidden");
+      btnLoader.classList.remove("hidden");
+
+      let i = 0;
+      const interval = setInterval(() => {
+        loadingText.textContent = loadingMessages[i % loadingMessages.length];
+        i++;
+      }, 2200);
+
+      try {
+        const res = await fetch("/analyze/", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        clearInterval(interval);
+        if (data.success) {
+          window.location.href = data.redirect;
+        } else {
+          overlay.classList.add("hidden");
+          overlay.classList.remove("flex");
+          submitBtn.disabled = false;
+          btnText.classList.remove("hidden");
+          btnLoader.classList.add("hidden");
+          alert("Error: " + (data.error || "Analysis failed"));
+        }
+      } catch (err) {
+        clearInterval(interval);
+        overlay.classList.add("hidden");
+        overlay.classList.remove("flex");
+        submitBtn.disabled = false;
+        btnText.classList.remove("hidden");
+        btnLoader.classList.add("hidden");
+        alert("Network error: " + err.message);
+      }
+    });
+</script>
+{% endblock %}
