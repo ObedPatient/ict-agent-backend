@@ -14,6 +14,9 @@ from .models import ChartAnalysis
 from .forms import ChartAnalysisForm
 from .ict_prompt import ICT_SYSTEM_PROMPT
 from .session_detector import get_session_info
+import traceback
+import sys
+
 
 logger = logging.getLogger(__name__)
 
@@ -204,9 +207,139 @@ def parse_ai_response(response_text):
         "no_trade_reason": ""
     }
 
+
+
 @csrf_exempt
 @require_POST
 def analyze(request):
+    """API endpoint for chart analysis"""
+    try:
+        print("=" * 50)
+        print("ANALYZE REQUEST RECEIVED")
+        print("=" * 50)
+        
+        # Log request details
+        print(f"FILES keys: {list(request.FILES.keys())}")
+        print(f"POST keys: {list(request.POST.keys())}")
+        
+        # Check API key first
+        api_key = settings.OPENROUTER_API_KEY
+        print(f"OPENROUTER_API_KEY present: {bool(api_key)}")
+        if not api_key:
+            print("ERROR: OPENROUTER_API_KEY not configured")
+            return JsonResponse({
+                'error': 'OPENROUTER_API_KEY not configured'
+            }, status=500)
+
+        # Process form
+        form = ChartAnalysisForm(request.POST, request.FILES)
+        print(f"Form is valid: {form.is_valid()}")
+        
+        if not form.is_valid():
+            print(f"Form errors: {form.errors}")
+            return JsonResponse({'error': 'Invalid form data', 'details': form.errors}, status=400)
+
+        # Save analysis
+        analysis = form.save()
+        print(f"Analysis saved with ID: {analysis.id}")
+
+        # Capture session
+        utc_now = datetime.now(timezone.utc)
+        session_info = get_session_info(utc_now)
+        analysis.session = session_info['session_name']
+        analysis.ny_time = session_info['ny_time_str']
+        analysis.save()
+        print(f"Session saved: {session_info['session_name']}")
+
+        # Process image
+        print("Processing image...")
+        with analysis.chart_image.open('rb') as f:
+            image_data = base64.standard_b64encode(f.read()).decode('utf-8')
+
+        ext = analysis.chart_image.name.split('.')[-1].lower()
+        media_type_map = {
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+            'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp'
+        }
+        media_type = media_type_map.get(ext, 'image/jpeg')
+        print(f"Image type: {ext}, size: {len(image_data)} bytes")
+
+        # Build user context
+        user_context = f"""
+The chart image has been uploaded at:
+- UTC time: {utc_now.strftime('%Y-%m-%d %H:%M UTC')}
+- New York time: {session_info['ny_time_str']}
+- Active session: {session_info['session_name']}
+- Session context: {session_info['session_description']}
+- In a killzone: {'YES — HIGH PROBABILITY WINDOW' if session_info['is_killzone'] else 'No'}
+- Avoid trading: {'YES — {}'.format(session_info['session_name']) if session_info['avoid_trading'] else 'No'}
+
+Risk per trade: {analysis.risk_percent}%
+Trader notes: {analysis.notes if analysis.notes else 'None provided'}
+
+READ the chart image carefully:
+1. Identify the trading instrument/pair from the chart header or symbol watermark
+2. Identify the timeframe from the chart label or candle structure
+3. Perform complete ICT/SMC analysis using the session context above
+
+IMPORTANT: Respond with ONLY a valid JSON object. No preamble, no explanation, no markdown.
+Start your response with {{ and end with }}
+"""
+
+        # Call OpenRouter
+        print("Calling OpenRouter API...")
+        try:
+            response_text = call_openrouter(api_key, image_data, media_type, user_context)
+            print(f"OpenRouter response received, length: {len(response_text)}")
+        except Exception as e:
+            print(f"OpenRouter call failed: {e}")
+            traceback.print_exc()
+            analysis.delete()
+            return JsonResponse({'error': f'OpenRouter API error: {str(e)}'}, status=500)
+
+        # Parse response
+        print("Parsing AI response...")
+        result = parse_ai_response(response_text)
+        print(f"Parsed result keys: {list(result.keys())}")
+
+        # Save results
+        analysis.pair = result.get('detected_pair', '')
+        analysis.timeframe = result.get('detected_timeframe', '')
+        analysis.signal = result.get('signal', 'NO_TRADE')
+        analysis.bias = result.get('bias', 'NEUTRAL')
+        analysis.market_structure = result.get('market_structure', '')
+        analysis.key_levels = result.get('key_levels', '')
+        analysis.entry_price = result.get('entry_price', '')
+        analysis.stoploss = result.get('stoploss', '')
+        analysis.tp1 = result.get('tp1', '')
+        analysis.tp2 = result.get('tp2', '')
+        analysis.rr_ratio = result.get('rr_ratio', '')
+        analysis.full_analysis = result.get('full_analysis', '')
+        analysis.wait_condition = result.get('wait_condition', '')
+        analysis.no_trade_reason = result.get('no_trade_reason', '')
+        analysis.save()
+        print("Analysis results saved")
+
+        return JsonResponse({'success': True, 'analysis_id': str(analysis.pk)})
+
+    except Exception as e:
+        print("=" * 50)
+        print("ERROR IN ANALYZE VIEW:")
+        print(f"Exception type: {type(e).__name__}")
+        print(f"Exception message: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc(file=sys.stderr)
+        print("=" * 50)
+        
+        # Try to delete analysis if it was created
+        try:
+            if 'analysis' in locals() and analysis:
+                analysis.delete()
+                print("Analysis deleted due to error")
+        except:
+            pass
+            
+        return JsonResponse({'error': str(e), 'type': type(e).__name__}, status=500)
     """API endpoint for chart analysis"""
     form = ChartAnalysisForm(request.POST, request.FILES)
     if not form.is_valid():
