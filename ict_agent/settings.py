@@ -9,7 +9,6 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# Allow your frontend domain and Render domain
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
@@ -55,16 +54,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ict_agent.wsgi.application'
 
-# PostgreSQL Database Configuration (Required - No SQLite fallback)
+# Database - PostgreSQL only
 DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is required. Please set it to your PostgreSQL connection string.")
+    raise ValueError("DATABASE_URL environment variable is required")
 
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,
         conn_max_age=600,
-        ssl_require=True  # Required for most cloud PostgreSQL services
+        ssl_require=True
     )
 }
 
@@ -74,27 +73,31 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files - Cloudinary is required (no local storage in production)
-if os.getenv('CLOUDINARY_URL'):
+# Media files with Cloudinary - Using individual variables
+CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
+CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
+CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
+
+# Check if Cloudinary is configured (required for production)
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
     import cloudinary
     import cloudinary.uploader
     import cloudinary.api
     
     cloudinary.config(
-        cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-        api_key=os.getenv('CLOUDINARY_API_KEY'),
-        api_secret=os.getenv('CLOUDINARY_API_SECRET')
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET
     )
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
-    # In development, you might want local media storage
-    # In production, this will raise an error if Cloudinary is not configured
+    # For development only - use local media storage
     if not DEBUG:
-        raise ValueError("CLOUDINARY_URL environment variable is required in production. Please set it for media file storage.")
+        raise ValueError("Cloudinary credentials are required in production. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET")
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
 
-# CORS settings - Allow your frontend domain
+# CORS settings
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
@@ -104,7 +107,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000'
 # API Keys
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 if not OPENROUTER_API_KEY and not DEBUG:
-    raise ValueError("OPENROUTER_API_KEY environment variable is required in production.")
+    raise ValueError("OPENROUTER_API_KEY environment variable is required in production")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LANGUAGE_CODE = 'en-us'
