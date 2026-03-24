@@ -54,15 +54,16 @@ def history(request):
     trade_count = analyses.filter(signal='TRADE').count()
     no_trade_count = analyses.filter(signal='NO_TRADE').count()
     
-    # Return JSON for API
     return JsonResponse({
         'analyses': [
             {
-                'id': a.id,
+                'id': str(a.id),  
                 'pair': a.pair,
                 'timeframe': a.timeframe,
                 'signal': a.signal,
                 'bias': a.bias,
+                'entry_price': a.entry_price,
+                'rr_ratio': a.rr_ratio,
                 'created_at': a.created_at.isoformat(),
                 'chart_image_url': a.chart_image.url if a.chart_image else None,
                 'session': a.session,
@@ -78,7 +79,7 @@ def analysis_detail(request, pk):
     analysis = get_object_or_404(ChartAnalysis, pk=pk)
     
     return JsonResponse({
-        'id': analysis.id,
+        'id': str(analysis.id),
         'pair': analysis.pair,
         'timeframe': analysis.timeframe,
         'signal': analysis.signal,
@@ -95,7 +96,7 @@ def analysis_detail(request, pk):
         'no_trade_reason': analysis.no_trade_reason,
         'created_at': analysis.created_at.isoformat(),
         'chart_image_url': analysis.chart_image.url if analysis.chart_image else None,
-        'risk_percent': analysis.risk_percent,
+        'risk_percent': str(analysis.risk_percent),
         'notes': analysis.notes,
         'session': analysis.session,
         'ny_time': analysis.ny_time,
@@ -277,3 +278,12 @@ def delete_analysis(request, pk):
             analysis.chart_image.delete()
         analysis.delete()
     return JsonResponse({'success': True})
+
+
+def health_check(request):
+    """Health check endpoint for Render"""
+    return JsonResponse({
+        'status': 'healthy',
+        'version': '1.0.0',
+        'database': 'connected' if ChartAnalysis.objects.exists() else 'empty'
+    })
