@@ -48,31 +48,57 @@ def index(request):
         'concepts': concepts,
     })
 
+import traceback
+import sys
+
 def history(request):
     """API endpoint to get analysis history"""
-    analyses = ChartAnalysis.objects.all()
-    trade_count = analyses.filter(signal='TRADE').count()
-    no_trade_count = analyses.filter(signal='NO_TRADE').count()
-    
-    return JsonResponse({
-        'analyses': [
-            {
-                'id': str(a.id),  
-                'pair': a.pair,
-                'timeframe': a.timeframe,
-                'signal': a.signal,
-                'bias': a.bias,
-                'entry_price': a.entry_price,
-                'rr_ratio': a.rr_ratio,
-                'created_at': a.created_at.isoformat(),
-                'chart_image_url': a.chart_image.url if a.chart_image else None,
-                'session': a.session,
-            }
-            for a in analyses
-        ],
-        'trade_count': trade_count,
-        'no_trade_count': no_trade_count,
-    })
+    try:
+        print("=== HISTORY ENDPOINT CALLED ===")
+        analyses = ChartAnalysis.objects.all().order_by('-created_at')
+        print(f"Found {analyses.count()} analyses")
+        
+        analyses_list = []
+        for a in analyses:
+            try:
+                analysis_dict = {
+                    'id': str(a.id),
+                    'pair': str(a.pair) if a.pair else 'Unknown',
+                    'timeframe': str(a.timeframe) if a.timeframe else '',
+                    'signal': str(a.signal) if a.signal else 'NO_TRADE',
+                    'bias': str(a.bias) if a.bias else 'NEUTRAL',
+                    'entry_price': str(a.entry_price) if a.entry_price else '',
+                    'rr_ratio': str(a.rr_ratio) if a.rr_ratio else '',
+                    'created_at': a.created_at.isoformat() if a.created_at else None,
+                    'session': str(a.session) if a.session else '',
+                }
+                
+                # Handle chart_image safely
+                if a.chart_image:
+                    try:
+                        analysis_dict['chart_image_url'] = a.chart_image.url
+                    except:
+                        analysis_dict['chart_image_url'] = None
+                else:
+                    analysis_dict['chart_image_url'] = None
+                    
+                analyses_list.append(analysis_dict)
+            except Exception as e:
+                print(f"Error processing analysis {a.id}: {e}")
+                continue
+        
+        trade_count = ChartAnalysis.objects.filter(signal='TRADE').count()
+        no_trade_count = ChartAnalysis.objects.filter(signal='NO_TRADE').count()
+        
+        return JsonResponse({
+            'analyses': analyses_list,
+            'trade_count': trade_count,
+            'no_trade_count': no_trade_count,
+        })
+    except Exception as e:
+        print(f"HISTORY ERROR: {e}")
+        traceback.print_exc(file=sys.stderr)
+        return JsonResponse({'error': str(e)}, status=500)
 
 def analysis_detail(request, pk):
     """API endpoint to get analysis details"""
@@ -282,8 +308,23 @@ def delete_analysis(request, pk):
 
 def health_check(request):
     """Health check endpoint for Render"""
-    return JsonResponse({
-        'status': 'healthy',
-        'version': '1.0.0',
-        'database': 'connected' if ChartAnalysis.objects.exists() else 'empty'
-    })
+    try:
+        print("=== HEALTH CHECK CALLED ===")
+        # Test database connection
+        from django.db import connection
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        
+        count = ChartAnalysis.objects.count()
+        
+        return JsonResponse({
+            'status': 'healthy',
+            'version': '1.0.0',
+            'database': 'connected',
+            'analyses_count': count
+        })
+    except Exception as e:
+        print(f"HEALTH CHECK ERROR: {e}")
+        traceback.print_exc(file=sys.stderr)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
